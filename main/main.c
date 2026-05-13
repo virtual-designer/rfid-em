@@ -15,6 +15,12 @@
 
 #include "MFRC522.h"
 
+#define RC522_PIN_MISO GPIO_NUM_19
+#define RC522_PIN_MOSI GPIO_NUM_23
+#define RC522_PIN_SCLK GPIO_NUM_18
+#define RC522_PIN_SDA GPIO_NUM_5
+#define RC522_PIN_RST GPIO_NUM_14
+
 static _Noreturn void
 halt (void)
 {
@@ -68,14 +74,10 @@ buzzer_beep (uint32_t duration_ms)
 static void
 spi_init (void)
 {
-    const uint32_t PIN_MOSI = RC522_SPI_BUS_GPIO_MOSI;
-    const uint32_t PIN_MISO = RC522_SPI_BUS_GPIO_MISO;
-    const uint32_t PIN_SCK = RC522_SPI_BUS_GPIO_SCLK;
-
     spi_bus_config_t bus_cfg = {
-        .mosi_io_num = PIN_MOSI,
-        .miso_io_num = PIN_MISO,
-        .sclk_io_num = PIN_SCK,
+        .mosi_io_num = RC522_PIN_MOSI,
+        .miso_io_num = RC522_PIN_MISO,
+        .sclk_io_num = RC522_PIN_SCLK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
     };
@@ -86,12 +88,10 @@ spi_init (void)
 static spi_device_handle_t
 rc522_init (void)
 {
-    const uint32_t PIN_CS = RC522_SPI_SCANNER_GPIO_SDA;
-
     spi_device_interface_config_t dev_cfg = {
         .clock_speed_hz = 500000,
         .mode = 0,
-        .spics_io_num = PIN_CS,
+        .spics_io_num = RC522_PIN_SDA,
         .queue_size = 7,
     };
 
@@ -115,14 +115,16 @@ app_main (void)
 
     spi_init ();
     spi_device_handle_t rc522 = rc522_init ();
+
+    PCD_SetPins(RC522_PIN_MISO, RC522_PIN_MOSI, RC522_PIN_SCLK, RC522_PIN_SDA, RC522_PIN_RST);
     PCD_Init (rc522);
 
-    gpio_set_direction (RC522_SCANNER_GPIO_RST, GPIO_MODE_OUTPUT);
+    gpio_set_direction (RC522_PIN_RST, GPIO_MODE_OUTPUT);
     gpio_set_direction (GPIO_NUM_25, GPIO_MODE_OUTPUT);
     gpio_set_direction (GPIO_NUM_26, GPIO_MODE_OUTPUT);
     gpio_set_direction (GPIO_NUM_27, GPIO_MODE_OUTPUT);
 
-    gpio_set_level (RC522_SCANNER_GPIO_RST, 1);
+    gpio_set_level (RC522_PIN_RST, 1);
     gpio_set_level (GPIO_NUM_26, 1);
     gpio_set_level (GPIO_NUM_25, 0);
     gpio_set_level (GPIO_NUM_27, 0);
@@ -155,9 +157,11 @@ app_main (void)
 
         printf ("UID: ");
 
-        for (uint8_t i = 0; i < uid.size; i++)
+        const Uid *uid = PICC_GetUid();
+
+        for (uint8_t i = 0; i < uid->size; i++)
         {
-            printf ("%x ", uid.uidByte[i]);
+            printf ("%x ", uid->uidByte[i]);
         }
 
         printf ("\n");
@@ -165,7 +169,7 @@ app_main (void)
         gpio_set_level (GPIO_NUM_26, 0);
         gpio_set_level (GPIO_NUM_25, 0);
 
-        bool denied = uid.uidByte[0] == 0xee;
+        bool denied = uid->uidByte[0] == 0xee;
 
         gpio_num_t led_gpio = denied ? GPIO_NUM_25 : GPIO_NUM_27;
 
