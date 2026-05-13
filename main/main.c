@@ -36,7 +36,7 @@ buzzer_init (void)
     ledc_timer_config_t timer_cfg = {
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .duty_resolution = LEDC_TIMER_10_BIT,
-        .freq_hz = 2400,
+        .freq_hz = 2600,
         .timer_num = LEDC_TIMER_0,
         .clk_cfg = LEDC_AUTO_CLK,
     };
@@ -116,7 +116,8 @@ app_main (void)
     spi_init ();
     spi_device_handle_t rc522 = rc522_init ();
 
-    PCD_SetPins(RC522_PIN_MISO, RC522_PIN_MOSI, RC522_PIN_SCLK, RC522_PIN_SDA, RC522_PIN_RST);
+    PCD_SetPins (RC522_PIN_MISO, RC522_PIN_MOSI, RC522_PIN_SCLK, RC522_PIN_SDA,
+                 RC522_PIN_RST);
     PCD_Init (rc522);
 
     gpio_set_direction (RC522_PIN_RST, GPIO_MODE_OUTPUT);
@@ -147,17 +148,27 @@ app_main (void)
             if (!PICC_ReadCardSerial (rc522))
                 continue;
 
-            printf("Read tried %d times\n", i);
+            printf ("Read tried %d times\n", i);
             success = true;
             break;
         }
 
         if (!success)
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                gpio_set_level (GPIO_NUM_25, 1);
+                vTaskDelay (pdMS_TO_TICKS (100));
+                gpio_set_level (GPIO_NUM_25, 0);
+                vTaskDelay (pdMS_TO_TICKS (100));
+            }
+
             continue;
+        }
 
         printf ("UID: ");
 
-        const Uid *uid = PICC_GetUid();
+        const Uid *uid = PICC_GetUid ();
 
         for (uint8_t i = 0; i < uid->size; i++)
         {
