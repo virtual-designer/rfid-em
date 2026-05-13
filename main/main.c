@@ -2,15 +2,17 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "freertos/FreeRTOS.h" // IWYU pragma: keep
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "driver/spi_common.h"
 #include "driver/spi_master.h"
+#include "freertos/FreeRTOS.h" // IWYU pragma: keep
 #include "freertos/projdefs.h"
 #include "freertos/task.h"
 #include "hal/gpio_types.h"
 #include "hal/ledc_types.h"
+#include "soc/gpio_num.h"
+
 #include "MFRC522.h"
 
 static _Noreturn void
@@ -127,41 +129,69 @@ app_main (void)
 
     for (;;)
     {
-        if (!PICC_IsNewCardPresent (rc522)) {
+        if (!PICC_IsNewCardPresent (rc522))
+        {
             vTaskDelay (pdMS_TO_TICKS (250));
             continue;
         }
 
         buzzer_beep (80);
 
-        printf("Card detected\n");
-        PICC_ReadCardSerial (rc522);
+        printf ("Card detected\n");
+        bool success = false;
 
-        printf("UID: ");
+        for (int i = 0; i < 3; i++)
+        {
+            if (!PICC_ReadCardSerial (rc522))
+                continue;
 
-        for (uint8_t i = 0; i < uid.size; i++) {
-            printf("%x ", uid.uidByte[i]);
+            printf("Read tried %d times\n", i);
+            success = true;
+            break;
         }
 
-        printf("\n");
+        if (!success)
+            continue;
+
+        printf ("UID: ");
+
+        for (uint8_t i = 0; i < uid.size; i++)
+        {
+            printf ("%x ", uid.uidByte[i]);
+        }
+
+        printf ("\n");
 
         gpio_set_level (GPIO_NUM_26, 0);
         gpio_set_level (GPIO_NUM_25, 0);
 
+        bool denied = uid.uidByte[0] == 0xee;
+
+        gpio_num_t led_gpio = denied ? GPIO_NUM_25 : GPIO_NUM_27;
+
         for (int i = 0; i < 5; i++)
         {
-            gpio_set_level (GPIO_NUM_27, 1);
+            gpio_set_level (led_gpio, 1);
             vTaskDelay (pdMS_TO_TICKS (100));
-            gpio_set_level (GPIO_NUM_27, 0);
+
+            if (denied)
+                buzzer_beep (80);
+
+            gpio_set_level (led_gpio, 0);
             vTaskDelay (pdMS_TO_TICKS (100));
+
+            if (denied)
+                buzzer_beep (80);
         }
+
+        PICC_HaltA (rc522);
+        PCD_StopCrypto1 (rc522);
 
         gpio_set_level (GPIO_NUM_26, 1);
         gpio_set_level (GPIO_NUM_25, 0);
         gpio_set_level (GPIO_NUM_27, 0);
     }
 }
-
 
 /**
  * 13 -> RST
@@ -170,4 +200,4 @@ app_main (void)
  * 34 -> SS
  * 35 -> SCK
  * 23 -> MOSI
-*/
+ */

@@ -218,7 +218,7 @@ enum PCD_Register {
 	void PCD_AntennaOn(spi_device_handle_t spi);
 	void PCD_Version(spi_device_handle_t spi);
 	bool PICC_IsNewCardPresent(spi_device_handle_t spi);
-	uint8_t PICC_ReadCardSerial(spi_device_handle_t spi);
+	bool PICC_ReadCardSerial(spi_device_handle_t spi);
 	uint8_t PICC_RequestA(spi_device_handle_t spi,uint8_t *bufferATQA,uint8_t *bufferSize);
 	uint8_t PICC_REQA_or_WUPA(spi_device_handle_t spi,uint8_t command,uint8_t *bufferATQA,uint8_t *bufferSize);
 	uint8_t PCD_TransceiveData(spi_device_handle_t spi,uint8_t *sendData, uint8_t sendLen, uint8_t *backData, uint8_t *backLen, uint8_t *validBits, uint8_t rxAlign, bool checkCRC);
@@ -262,4 +262,6 @@ enum PCD_Register {
 			              uint8_t sendLen,		        ///< Number of bytes in sendData.
 				      bool acceptTimeout	        ///< True => A timeout is also success
 				      );
+	void PCD_StopCrypto1(spi_device_handle_t spi);
+	uint8_t PICC_HaltA(spi_device_handle_t spi);
 	#endif

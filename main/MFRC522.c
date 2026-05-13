@@ -512,7 +512,7 @@ uint8_t PCD_CommunicateWithPICC(spi_device_handle_t spi,
 
 
 
-uint8_t PICC_ReadCardSerial(spi_device_handle_t spi)
+bool PICC_ReadCardSerial(spi_device_handle_t spi)
 {
 
 
